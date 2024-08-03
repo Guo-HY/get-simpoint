@@ -8,9 +8,13 @@ def invoke(cmd):
     if (ret):
         exit(ret)
 
-if len(sys.argv) != 7 and len(sys.argv) != 6:
-    print(f"usage: {sys.argv[0]} bench_run_dir bench_name rate_num base_ramfs_dir out_dir [ld_so]")
+
+if len(sys.argv) != 6:
+    print(f"usage: {sys.argv[0]} bench_run_dir bench_name rate_num base_ramfs_dir out_dir")
     exit(1)
+
+ld_so = ""
+
 
 bench_run_dir = sys.argv[1]
 bench_name = sys.argv[2]
@@ -18,11 +22,6 @@ rate_num = int(sys.argv[3])
 base_ramfs_dir = sys.argv[4]
 out_dir = sys.argv[5]
 
-if len(sys.argv) == 7:
-    ld_so = sys.argv[6]
-else:
-    ld_so = ""
-    print("warn : ld_so is not given, confirm that the workload is statically linked")
 
 speccmds = []
 with open(bench_run_dir + '/speccmds.cmd', 'r') as f:
@@ -45,7 +44,7 @@ for line in speccmds:
             options[prev_word] = word
             prev_word = None
         else:
-            if word in ['-C', '-E', '-N', '-r']:
+            if word in ['-u', '-E', '-N', '-r']:
                 break
             elif word in ['-i', '-o', '-e']:
                 prev_word = word

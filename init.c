@@ -31,6 +31,7 @@ static inline void test_begin(void)
 static inline void test_end(void)
 {
     asm volatile ("ibar 65 \r\n");
+    asm volatile(".word 0x50000000" : : : "memory");
 }
 
 void set_stack_unlimited(void) {
@@ -227,17 +228,6 @@ int test_main(int argc, char *argv[])
             return -1;
         }
         active_copies--;
-
-        for (int idx = 0; idx < rate_num; idx++) {
-            char filepath[1024];
-            sprintf(filepath, "%s.%d/%s", work_dir, idx, filename_stdout);
-            show_file_content(filepath);
-            sprintf(filepath, "%s.%d/%s", work_dir, idx, filename_stderr);
-            show_file_content(filepath);
-        }
-        fflush(stderr);
-        
-        test_end();
     }
 
     gettimeofday(&t_end, NULL);
@@ -253,7 +243,18 @@ int main(int argc, char *argv[])
 
     stderr = fdopen(dup(STDERR_FILENO), "w");
     res = test_main(argc, argv);
+
+    for (int idx = 0; idx < rate_num; idx++) {
+        char filepath[1024];
+        sprintf(filepath, "%s.%d/%s", work_dir, idx, filename_stdout);
+        show_file_content(filepath);
+        sprintf(filepath, "%s.%d/%s", work_dir, idx, filename_stderr);
+        show_file_content(filepath);
+    }
+
     fprintf(stderr, "%s\n", res ? "FAILURE" : "SUCCESS");
+    fflush(NULL);
+    test_end();
 
     sleep(1);
     reboot(RB_POWER_OFF);

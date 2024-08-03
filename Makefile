@@ -1,18 +1,22 @@
 .DEFAULT_GOAL := help
 # config #####################################################
 
+COMPILER_HOME = /home/ghy/loongson/la64-toolchain/loongson-gnu-toolchain-8.3.novec-x86_64-loongarch64-linux-gnu-rc1.1
+SPEC_HOME = /home/ghy/loongson/benchmark/spec2006/cpu2006v99
+LA_EMU_HOME=/home/ghy/loongson/LA_EMU
+LINUX_HOME=/home/ghy/loongson/linux/linux-4.19-loongson
+
 PWD = $(shell pwd)
 
 # compile tool chain
-TOOLCHAIN_PATH = $(LA64TC_HOME)
 TOOLCHAIN_ARCH = loongarch64-linux-gnu
-CROSS_COMPILE = $(TOOLCHAIN_PATH)/bin/$(TOOLCHAIN_ARCH)-
+CROSS_COMPILE = $(COMPILER_HOME)/bin/$(TOOLCHAIN_ARCH)-
 
 # spec06
 # path to benchspec/CPU2006
-spec06.bench_dir = $(SPEC)/benchspec/CPU2006
+spec06.bench_dir = $(SPEC_HOME)/benchspec/CPU2006
 # run name (directory in benchspec/CPU2006/*/run)
-spec06.run = run_base_test_none.0000 # run_base_ref_none.0000
+spec06.run = run_base_test_none.0000
 
 # spec06 benchmarks
 # spec06.list += 410.bwaves
@@ -25,7 +29,7 @@ spec06.run = run_base_test_none.0000 # run_base_ref_none.0000
 # spec06.list += 444.namd
 # spec06.list += 447.dealII
 # spec06.list += 450.soplex
-# spec06.list += 453.povray
+spec06.list += 453.povray
 # spec06.list += 454.calculix
 # spec06.list += 459.GemsFDTD
 # spec06.list += 465.tonto
@@ -50,7 +54,7 @@ spec06.list += 401.bzip2
 BASE_RAMFS_OUTDIR = $(PWD)/output_files/base_dir
 RAMFS_OUTDIR = $(PWD)/output_files/ramfs
 # ld.so path in the ramfs
-LD_SO = /lib64/ld.so.1
+LD_SO = # /lib64/ld.so.1
 # ramfs options
 SUITE = spec06
 RATE = 1
@@ -60,29 +64,26 @@ RAMFS_LIST = $(foreach x,$(BENCH_LIST),\
 			 $(patsubst $(RAMFS_OUTDIR)/%.cpio.gz,%,\
 			 $(wildcard $(RAMFS_OUTDIR)/$(x)*.cpio.gz)))
 
-# qemu
-QEMU=$(PWD)/projects/qemu/build/qemu-system-loongarch64
-# for qemu run
-SM_INTERVAL=1000000
-QEMU_FLAGS = -M loongson320 -icount shift=0,sleep=off -m 4G -nographic -monitor none
+# laemu
+LA_EMU=$(LA_EMU_HOME)/build/la_emu_kernel
+LIBBBLK=$(LA_EMU_HOME)/plugins/libbblk.so
+LIBBBV=$(LA_EMU_HOME)/plugins/libbbv.so
+LIBSIMPOINT=$(LA_EMU_HOME)/plugins/libsimpoint.so
 
 # linux
-LINUX_SRCDIR=$(PWD)/projects/linux-4.19-loongson
 LINUX_OUTDIR = $(PWD)/output_files/linux
 # for linux-4.19-loongson build
-ARCH=loongarch
-LINUX_CFG=ghy_defconfig
-LINUX_CFG_PATH=projects/linux-4.19-loongson/arch/loongarch/configs/$(LINUX_CFG)
+export ARCH=loongarch
+LINUX_CFG=320ckpt_defconfig
+LINUX_CFG_PATH=$(LINUX_HOME)/arch/loongarch/configs/$(LINUX_CFG)
 LINUX_LIST = $(patsubst %,%.vmlinux,$(RAMFS_LIST))
 
 # simpoint
 SIMPOINT=$(PWD)/projects/SimPoint.3.2/bin/simpoint
 SIMPOINT_OUTDIR = $(PWD)/output_files/simpoint
 # for simpoint run
-SIMPOINT_FLAGS = -maxK 30 -numInitSeeds 2 -iters 1000
-SIMPOINT_FLAGS += -loadFVFile ./bbv.txt 
-SIMPOINT_FLAGS += -saveSimpoints simpoints
-SIMPOINT_FLAGS += -saveSimpointWeights weights
+SM_INTERVAL=50000000
+SIMPOINT_FLAGS = -maxK 30 -numInitSeeds 5 -iters 1000
 
 ##############################################################
 
@@ -98,7 +99,7 @@ $(BASE_RAMFS_OUTDIR)/.gen: $(INIT_SRCS)
 
 	mkdir -p $(BASE_RAMFS_OUTDIR)
 	$(CROSS_COMPILE)gcc -static -o $(BASE_RAMFS_OUTDIR)/init $(INIT_SRCS)
-	cp -a $(TOOLCHAIN_PATH)/sysroot/* $(BASE_RAMFS_OUTDIR)/
+	cp -a $(COMPILER_HOME)/sysroot/* $(BASE_RAMFS_OUTDIR)/
 
 	touch $@
 
@@ -119,28 +120,49 @@ linux: $(patsubst %,%.vmlinux,$(RAMFS_LIST))
 	echo "Generated $*.vmlinux"
 	mkdir -p $(LINUX_OUTDIR)
 	sed -i 's,CONFIG_INITRAMFS_SOURCE=.*,CONFIG_INITRAMFS_SOURCE="$(RAMFS_OUTDIR)/$*.cpio.gz",g' $(LINUX_CFG_PATH)
-	make -C $(LINUX_SRCDIR) $(LINUX_CFG)
-	make -C $(LINUX_SRCDIR) vmlinux -j 4
-	cp $(LINUX_SRCDIR)/vmlinux $(LINUX_OUTDIR)/$*.vmlinux
+	make -C $(LINUX_HOME) $(LINUX_CFG) &> $(LINUX_OUTDIR)/linux.log
+	make -C $(LINUX_HOME) vmlinux CROSS_COMPILE=$(CROSS_COMPILE) -j 4 &> $(LINUX_OUTDIR)/linux.log
+	cp $(LINUX_HOME)/vmlinux $(LINUX_OUTDIR)/$*.vmlinux
 
 linux_clean:
 	rm -rf $(LINUX_OUTDIR)
 
 
-ckpt: $(patsubst %,%.ckpt,$(RAMFS_LIST))
+bblk: $(patsubst %,%.bblk,$(RAMFS_LIST))
+
+%.bblk:
+	mkdir -p $(SIMPOINT_OUTDIR)/$*
+	echo "Generated bblk.txt"
+	cd $(SIMPOINT_OUTDIR)/$* && $(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBBBLK),bblk=./bblk.txt &> $(SIMPOINT_OUTDIR)/$*/bblk.log
+
+bbv: $(patsubst %,%.bbv,$(RAMFS_LIST))
+
+%.bbv:
+	echo "Generated bbv.txt,interval=$(SM_INTERVAL)"
+	cd $(SIMPOINT_OUTDIR)/$* && $(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBBBV),bblk=./bblk.txt,bbv=./bbv.txt,interval=$(SM_INTERVAL) &> $(SIMPOINT_OUTDIR)/$*/bbv.log
+
+simpoint: $(patsubst %,%.simpoint,$(RAMFS_LIST))
+
+%.simpoint:
+	echo "Generated simpoints and weights"
+	cd $(SIMPOINT_OUTDIR)/$* && $(SIMPOINT) $(SIMPOINT_FLAGS) -loadFVFile ./bbv.txt -saveSimpoints simpoints -saveSimpointWeights weights &> $(SIMPOINT_OUTDIR)/$*/simpoint.log
+
+only_ckpt: $(patsubst %,%.ckpt,$(RAMFS_LIST))
 
 %.ckpt:
 	echo "Generated $* simpoint checkpoint"
-	mkdir -p $(SIMPOINT_OUTDIR)/$*
-	echo "Generated bbv.txt"
-# Must be on one line !!!
-	export SHORTCUT_CONFIG_FILE=1 && cd $(SIMPOINT_OUTDIR)/$* && $(QEMU) $(QEMU_FLAGS) -kernel $(LINUX_OUTDIR)/$*.vmlinux
-	
-	echo "Generated simpoints and weights"
-	cd $(SIMPOINT_OUTDIR)/$* && $(SIMPOINT) $(SIMPOINT_FLAGS)
+	cd $(SIMPOINT_OUTDIR)/$* && $(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBSIMPOINT),interval=$(SM_INTERVAL),simpoints=$(SIMPOINT_OUTDIR)/$*/simpoints,weights=$(SIMPOINT_OUTDIR)/$*/weights &> $(SIMPOINT_OUTDIR)/$*/ckpt.log
 
-	echo "Generated checkpoint"
-	export SHORTCUT_CONFIG_FILE=2 && cd $(SIMPOINT_OUTDIR)/$* && $(QEMU) $(QEMU_FLAGS) -kernel $(LINUX_OUTDIR)/$*.vmlinux
+all_ckpt:
+	make bblk
+	make bbv
+	make simpoint
+	make ckpt
+
+all:
+	make ramfs
+	make linux
+	make all_ckpt
 
 ckpt_clean:
 	rm -rf $(SIMPOINT_OUTDIR)
@@ -149,6 +171,9 @@ clean:
 	rm -rf output_files
 
 help:
-	@echo "step 1: make ramfs # generate ramfs use benchmark"
-	@echo "step 2: make linux # generate vmlinux use ramfs"
-	@echo "step 3: make ckpt  # generate simpoint checkpoint use vmlinux"
+	@echo "step 1: make ramfs 		# generate ramfs use benchmark"
+	@echo "step 2: make linux 		# generate vmlinux use ramfs"
+	@echo "step 3: make bblk  		# generate basic block info use la_emu and vmlinux"
+	@echo "step 4: make bbv  		# generate basic block vector info use la_emu, vmlinux and bblk"
+	@echo "step 5: make simpoint  	# generate simpoints and weights use simpoint"
+	@echo "step 6: make ckpt  		# generate simpoint checkpoint use la_emu, vmlinux, weights and simpoints"
