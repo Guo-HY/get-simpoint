@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 # config #####################################################
 
-COMPILER_HOME = /home/ghy/loongson/la64-toolchain/loongson-gnu-toolchain-8.3.novec-x86_64-loongarch64-linux-gnu-rc1.1
+COMPILER_HOME = /home/ghy/loongson/la64-toolchain/loongson-gnu-toolchain-8.3-x86_64-loongarch64-linux-gnu-rc1.4
 SPEC_HOME = /home/ghy/loongson/benchmark/spec2006/cpu2006v99
 LA_EMU_HOME=/home/ghy/loongson/LA_EMU
 LINUX_HOME=/home/ghy/loongson/linux/linux-4.19-loongson
@@ -29,7 +29,7 @@ spec06.run = run_base_test_none.0000
 # spec06.list += 444.namd
 # spec06.list += 447.dealII
 # spec06.list += 450.soplex
-spec06.list += 453.povray
+# spec06.list += 453.povray
 # spec06.list += 454.calculix
 # spec06.list += 459.GemsFDTD
 # spec06.list += 465.tonto
@@ -37,8 +37,8 @@ spec06.list += 453.povray
 # spec06.list += 481.wrf
 # spec06.list += 482.sphinx3
 
-# spec06.list += 400.perlbench
-spec06.list += 401.bzip2
+spec06.list += 400.perlbench
+# spec06.list += 401.bzip2
 # spec06.list += 403.gcc
 # spec06.list += 429.mcf
 # spec06.list += 445.gobmk
@@ -68,6 +68,7 @@ RAMFS_LIST = $(foreach x,$(BENCH_LIST),\
 LA_EMU=$(LA_EMU_HOME)/build/la_emu_kernel
 LIBBBLK=$(LA_EMU_HOME)/plugins/libbblk.so
 LIBBBV=$(LA_EMU_HOME)/plugins/libbbv.so
+LIBBBVNATIVE=$(LA_EMU_HOME)/plugins/libbbv_native.so
 LIBSIMPOINT=$(LA_EMU_HOME)/plugins/libsimpoint.so
 
 # linux
@@ -99,7 +100,7 @@ $(BASE_RAMFS_OUTDIR)/.gen: $(INIT_SRCS)
 
 	mkdir -p $(BASE_RAMFS_OUTDIR)
 	$(CROSS_COMPILE)gcc -static -o $(BASE_RAMFS_OUTDIR)/init $(INIT_SRCS)
-	cp -a $(COMPILER_HOME)/sysroot/* $(BASE_RAMFS_OUTDIR)/
+# cp -a $(COMPILER_HOME)/sysroot/* $(BASE_RAMFS_OUTDIR)/
 
 	touch $@
 
@@ -116,13 +117,17 @@ ramfs_clean:
 
 linux: $(patsubst %,%.vmlinux,$(RAMFS_LIST))
 	
-%.vmlinux:
+%.vmlinux: %.vmlinux_build
+	cp $(LINUX_HOME)/vmlinux $(LINUX_OUTDIR)/$*.vmlinux
+
+%.vmlinux_config:
 	echo "Generated $*.vmlinux"
 	mkdir -p $(LINUX_OUTDIR)
 	sed -i 's,CONFIG_INITRAMFS_SOURCE=.*,CONFIG_INITRAMFS_SOURCE="$(RAMFS_OUTDIR)/$*.cpio.gz",g' $(LINUX_CFG_PATH)
-	make -C $(LINUX_HOME) $(LINUX_CFG) &> $(LINUX_OUTDIR)/linux.log
-	make -C $(LINUX_HOME) vmlinux CROSS_COMPILE=$(CROSS_COMPILE) -j 4 &> $(LINUX_OUTDIR)/linux.log
-	cp $(LINUX_HOME)/vmlinux $(LINUX_OUTDIR)/$*.vmlinux
+	make -C $(LINUX_HOME) $(LINUX_CFG)
+
+%.vmlinux_build: %.vmlinux_config
+	make -C $(LINUX_HOME) vmlinux CROSS_COMPILE=$(CROSS_COMPILE) -j 4
 
 linux_clean:
 	rm -rf $(LINUX_OUTDIR)
@@ -133,36 +138,42 @@ bblk: $(patsubst %,%.bblk,$(RAMFS_LIST))
 %.bblk:
 	mkdir -p $(SIMPOINT_OUTDIR)/$*
 	echo "Generated bblk.txt"
-	cd $(SIMPOINT_OUTDIR)/$* && $(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBBBLK),bblk=./bblk.txt &> $(SIMPOINT_OUTDIR)/$*/bblk.log
+	$(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBBBLK),bblk=$(SIMPOINT_OUTDIR)/$*/bblk.txt
 
 bbv: $(patsubst %,%.bbv,$(RAMFS_LIST))
 
 %.bbv:
 	echo "Generated bbv.txt,interval=$(SM_INTERVAL)"
-	cd $(SIMPOINT_OUTDIR)/$* && $(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBBBV),bblk=./bblk.txt,bbv=./bbv.txt,interval=$(SM_INTERVAL) &> $(SIMPOINT_OUTDIR)/$*/bbv.log
+	$(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBBBV),bblk=$(SIMPOINT_OUTDIR)/$*/bblk.txt,bbv=$(SIMPOINT_OUTDIR)/$*/bbv.txt,interval=$(SM_INTERVAL)
+
+bbv_native: $(patsubst %,%.bbv_native,$(RAMFS_LIST))
+
+%.bbv_native:
+	echo "Generated bbv.txt,interval=$(SM_INTERVAL)"
+	$(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBBBVNATIVE),bbv=$(SIMPOINT_OUTDIR)/$*/bbv.txt,interval=$(SM_INTERVAL)
 
 simpoint: $(patsubst %,%.simpoint,$(RAMFS_LIST))
 
 %.simpoint:
 	echo "Generated simpoints and weights"
-	cd $(SIMPOINT_OUTDIR)/$* && $(SIMPOINT) $(SIMPOINT_FLAGS) -loadFVFile ./bbv.txt -saveSimpoints simpoints -saveSimpointWeights weights &> $(SIMPOINT_OUTDIR)/$*/simpoint.log
+	$(SIMPOINT) $(SIMPOINT_FLAGS) -loadFVFile $(SIMPOINT_OUTDIR)/$*/bbv.txt -saveSimpoints $(SIMPOINT_OUTDIR)/$*/simpoints -saveSimpointWeights $(SIMPOINT_OUTDIR)/$*/weights
 
 only_ckpt: $(patsubst %,%.ckpt,$(RAMFS_LIST))
 
 %.ckpt:
 	echo "Generated $* simpoint checkpoint"
-	cd $(SIMPOINT_OUTDIR)/$* && $(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBSIMPOINT),interval=$(SM_INTERVAL),simpoints=$(SIMPOINT_OUTDIR)/$*/simpoints,weights=$(SIMPOINT_OUTDIR)/$*/weights &> $(SIMPOINT_OUTDIR)/$*/ckpt.log
+	$(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBSIMPOINT),interval=$(SM_INTERVAL),simpoints=$(SIMPOINT_OUTDIR)/$*/simpoints,weights=$(SIMPOINT_OUTDIR)/$*/weights
 
-all_ckpt:
-	make bblk
-	make bbv
-	make simpoint
-	make ckpt
+# all_ckpt:
+# 	make bblk
+# 	make bbv
+# 	make simpoint
+# 	make ckpt
 
-all:
-	make ramfs
-	make linux
-	make all_ckpt
+# all:
+# 	make ramfs
+# 	make linux
+# 	make all_ckpt
 
 ckpt_clean:
 	rm -rf $(SIMPOINT_OUTDIR)
