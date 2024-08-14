@@ -37,8 +37,8 @@ spec06.run = run_base_test_none.0000
 # spec06.list += 481.wrf
 # spec06.list += 482.sphinx3
 
-spec06.list += 400.perlbench
-# spec06.list += 401.bzip2
+# spec06.list += 400.perlbench
+spec06.list += 401.bzip2
 # spec06.list += 403.gcc
 # spec06.list += 429.mcf
 # spec06.list += 445.gobmk
@@ -68,7 +68,7 @@ RAMFS_LIST = $(foreach x,$(BENCH_LIST),\
 LA_EMU=$(LA_EMU_HOME)/build/la_emu_kernel
 LIBBBLK=$(LA_EMU_HOME)/plugins/libbblk.so
 LIBBBV=$(LA_EMU_HOME)/plugins/libbbv.so
-LIBBBVNATIVE=$(LA_EMU_HOME)/plugins/libbbv_native.so
+LIBBBVNAIVE=$(LA_EMU_HOME)/plugins/libbbv_naive.so
 LIBSIMPOINT=$(LA_EMU_HOME)/plugins/libsimpoint.so
 
 # linux
@@ -138,19 +138,28 @@ bblk: $(patsubst %,%.bblk,$(RAMFS_LIST))
 %.bblk:
 	mkdir -p $(SIMPOINT_OUTDIR)/$*
 	echo "Generated bblk.txt"
-	$(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBBBLK),bblk=$(SIMPOINT_OUTDIR)/$*/bblk.txt
+	$(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBBBLK),bblk=$(SIMPOINT_OUTDIR)/$*/bblk.txt,ibar0x40=1
+
+parallel_bblk:
+	mkdir -p $(SIMPOINT_OUTDIR)
+	python3 ./scripts/batch_bblk.py $(LA_EMU) $(LINUX_OUTDIR) $(LIBBBLK) $(SIMPOINT_OUTDIR)
 
 bbv: $(patsubst %,%.bbv,$(RAMFS_LIST))
 
 %.bbv:
 	echo "Generated bbv.txt,interval=$(SM_INTERVAL)"
-	$(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBBBV),bblk=$(SIMPOINT_OUTDIR)/$*/bblk.txt,bbv=$(SIMPOINT_OUTDIR)/$*/bbv.txt,interval=$(SM_INTERVAL)
+	$(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBBBV),bblk=$(SIMPOINT_OUTDIR)/$*/bblk.txt,bbv=$(SIMPOINT_OUTDIR)/$*/bbv.txt,interval=$(SM_INTERVAL),ibar0x40=1
 
-bbv_native: $(patsubst %,%.bbv_native,$(RAMFS_LIST))
+bbv_naive: $(patsubst %,%.bbv_naive,$(RAMFS_LIST))
 
-%.bbv_native:
+%.bbv_naive:
+	mkdir -p $(SIMPOINT_OUTDIR)/$*
 	echo "Generated bbv.txt,interval=$(SM_INTERVAL)"
-	$(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBBBVNATIVE),bbv=$(SIMPOINT_OUTDIR)/$*/bbv.txt,interval=$(SM_INTERVAL)
+	$(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBBBVNAIVE),bbv=$(SIMPOINT_OUTDIR)/$*/bbv.txt,interval=$(SM_INTERVAL),ibar0x40=1
+
+parallel_bbv_naive:
+	mkdir -p $(SIMPOINT_OUTDIR)
+	python3 ./scripts/batch_bbv_naive.py $(LA_EMU) $(LINUX_OUTDIR) $(LIBBBVNAIVE) $(SIMPOINT_OUTDIR) $(SM_INTERVAL)
 
 simpoint: $(patsubst %,%.simpoint,$(RAMFS_LIST))
 
@@ -158,11 +167,14 @@ simpoint: $(patsubst %,%.simpoint,$(RAMFS_LIST))
 	echo "Generated simpoints and weights"
 	$(SIMPOINT) $(SIMPOINT_FLAGS) -loadFVFile $(SIMPOINT_OUTDIR)/$*/bbv.txt -saveSimpoints $(SIMPOINT_OUTDIR)/$*/simpoints -saveSimpointWeights $(SIMPOINT_OUTDIR)/$*/weights
 
+parallel_simpoint:
+	python3 ./scripts/batch_simpoint.py $(SIMPOINT) $(LINUX_OUTDIR) $(SIMPOINT_OUTDIR)
+
 only_ckpt: $(patsubst %,%.ckpt,$(RAMFS_LIST))
 
 %.ckpt:
 	echo "Generated $* simpoint checkpoint"
-	$(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBSIMPOINT),interval=$(SM_INTERVAL),simpoints=$(SIMPOINT_OUTDIR)/$*/simpoints,weights=$(SIMPOINT_OUTDIR)/$*/weights
+	$(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBSIMPOINT),interval=$(SM_INTERVAL),simpoints=$(SIMPOINT_OUTDIR)/$*/simpoints,weights=$(SIMPOINT_OUTDIR)/$*/weights,ibar0x40=1
 
 # all_ckpt:
 # 	make bblk
