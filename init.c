@@ -244,15 +244,15 @@ int main(int argc, char *argv[])
     stderr = fdopen(dup(STDERR_FILENO), "w");
     res = test_main(argc, argv);
 
-    for (int idx = 0; idx < rate_num; idx++) {
-        char filepath[1024];
-        sprintf(filepath, "%s.%d/%s", work_dir, idx, filename_stdout);
-        show_file_content(filepath);
-        sprintf(filepath, "%s.%d/%s", work_dir, idx, filename_stderr);
-        show_file_content(filepath);
-    }
+    // for (int idx = 0; idx < rate_num; idx++) {
+    //     char filepath[1024];
+    //     sprintf(filepath, "%s.%d/%s", work_dir, idx, filename_stdout);
+    //     show_file_content(filepath);
+    //     sprintf(filepath, "%s.%d/%s", work_dir, idx, filename_stderr);
+    //     show_file_content(filepath);
+    // }
 
-    fprintf(stderr, "%s\n", res ? "FAILURE" : "SUCCESS");
+    fprintf(stderr, "%s\n", res ? "xxyyzz-FAILURE" : "xxyyzz-SUCCESS");
     fflush(NULL);
     test_end();
 
