@@ -18,7 +18,7 @@ spec06.bench_dir = $(SPEC_HOME)/benchspec/CPU2006
 # run name (directory in benchspec/CPU2006/*/run)
 spec06.run = run_base_ref_none.0000
 
-spec06 benchmarks
+# spec06 benchmarks
 spec06.list += 410.bwaves
 spec06.list += 416.gamess
 spec06.list += 433.milc
