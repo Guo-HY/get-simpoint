@@ -18,7 +18,7 @@ spec06.bench_dir = $(SPEC_HOME)/benchspec/CPU2006
 # run name (directory in benchspec/CPU2006/*/run)
 spec06.run = run_base_ref_none.0000
 
-# spec06 benchmarks
+spec06 benchmarks
 spec06.list += 410.bwaves
 spec06.list += 416.gamess
 spec06.list += 433.milc
@@ -83,8 +83,8 @@ LINUX_LIST = $(patsubst %,%.vmlinux,$(RAMFS_LIST))
 SIMPOINT=$(PWD)/projects/SimPoint.3.2/bin/simpoint
 SIMPOINT_OUTDIR = $(PWD)/output_files/simpoint
 # for simpoint run
-SM_INTERVAL=50000000
-SIMPOINT_FLAGS = -maxK 30 -numInitSeeds 5 -iters 1000
+SM_INTERVAL=100000000
+SIMPOINT_FLAGS = -maxK 30 -numInitSeeds 5
 
 ##############################################################
 
@@ -168,13 +168,16 @@ simpoint: $(patsubst %,%.simpoint,$(RAMFS_LIST))
 	$(SIMPOINT) $(SIMPOINT_FLAGS) -loadFVFile $(SIMPOINT_OUTDIR)/$*/bbv.txt -saveSimpoints $(SIMPOINT_OUTDIR)/$*/simpoints -saveSimpointWeights $(SIMPOINT_OUTDIR)/$*/weights
 
 parallel_simpoint:
-	python3 ./scripts/batch_simpoint.py $(SIMPOINT) $(LINUX_OUTDIR) $(SIMPOINT_OUTDIR)
+	python3 ./scripts/batch_simpoint.py $(SIMPOINT) $(LINUX_OUTDIR) $(SIMPOINT_OUTDIR) $(SIMPOINT_FLAGS)
 
-only_ckpt: $(patsubst %,%.ckpt,$(RAMFS_LIST))
+ckpt: $(patsubst %,%.ckpt,$(RAMFS_LIST))
 
 %.ckpt:
 	echo "Generated $* simpoint checkpoint"
-	$(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBSIMPOINT),interval=$(SM_INTERVAL),simpoints=$(SIMPOINT_OUTDIR)/$*/simpoints,weights=$(SIMPOINT_OUTDIR)/$*/weights,ibar0x40=1
+	$(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBSIMPOINT),path=$(SIMPOINT_OUTDIR)/$*,interval=$(SM_INTERVAL),simpoints=$(SIMPOINT_OUTDIR)/$*/simpoints,weights=$(SIMPOINT_OUTDIR)/$*/weights,ibar0x40=1
+
+parallel_ckpt:
+	python3 ./scripts/batch_ckpt.py $(LA_EMU) $(LINUX_OUTDIR) $(LIBSIMPOINT) $(SIMPOINT_OUTDIR) $(SM_INTERVAL)
 
 # all_ckpt:
 # 	make bblk
@@ -194,9 +197,9 @@ clean:
 	rm -rf output_files
 
 help:
-	@echo "step 1: make ramfs 		# generate ramfs use benchmark"
-	@echo "step 2: make linux 		# generate vmlinux use ramfs"
-	@echo "step 3: make bblk  		# generate basic block info use la_emu and vmlinux"
-	@echo "step 4: make bbv  		# generate basic block vector info use la_emu, vmlinux and bblk"
-	@echo "step 5: make simpoint  	# generate simpoints and weights use simpoint"
-	@echo "step 6: make ckpt  		# generate simpoint checkpoint use la_emu, vmlinux, weights and simpoints"
+	@echo "step 1: make ramfs 				# generate ramfs use benchmark"
+	@echo "step 2: make linux 				# generate vmlinux use ramfs"
+	@echo "step 3: make [parallel_]bblk			# generate basic block info use la_emu and vmlinux"
+	@echo "step 4: make [parallel_]bbv			# generate basic block vector info use la_emu, vmlinux and bblk"
+	@echo "step 5: make [parallel_]simpoint		# generate simpoints and weights use simpoint"
+	@echo "step 6: make [parallel_]ckpt			# generate simpoint checkpoint use la_emu, vmlinux, weights and simpoints"
