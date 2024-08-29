@@ -16,39 +16,39 @@ CROSS_COMPILE = $(COMPILER_HOME)/bin/$(TOOLCHAIN_ARCH)-
 # path to benchspec/CPU2006
 spec06.bench_dir = $(SPEC_HOME)/benchspec/CPU2006
 # run name (directory in benchspec/CPU2006/*/run)
-spec06.run = run_base_ref_none.0000
+spec06.run = run_base_test_none.0000
 
 # spec06 benchmarks
-spec06.list += 410.bwaves
-spec06.list += 416.gamess
-spec06.list += 433.milc
-spec06.list += 434.zeusmp
-spec06.list += 435.gromacs
-spec06.list += 436.cactusADM
-spec06.list += 437.leslie3d
-spec06.list += 444.namd
-spec06.list += 447.dealII
-spec06.list += 450.soplex
+# spec06.list += 410.bwaves
+# spec06.list += 416.gamess
+# spec06.list += 433.milc
+# spec06.list += 434.zeusmp
+# spec06.list += 435.gromacs
+# spec06.list += 436.cactusADM
+# spec06.list += 437.leslie3d
+# spec06.list += 444.namd
+# spec06.list += 447.dealII
+# spec06.list += 450.soplex
 spec06.list += 453.povray
-spec06.list += 454.calculix
-spec06.list += 459.GemsFDTD
-spec06.list += 465.tonto
-spec06.list += 470.lbm
-spec06.list += 481.wrf
-spec06.list += 482.sphinx3
+# spec06.list += 454.calculix
+# spec06.list += 459.GemsFDTD
+# spec06.list += 465.tonto
+# spec06.list += 470.lbm
+# spec06.list += 481.wrf
+# spec06.list += 482.sphinx3
 
-spec06.list += 400.perlbench
+# spec06.list += 400.perlbench
 spec06.list += 401.bzip2
-spec06.list += 403.gcc
-spec06.list += 429.mcf
-spec06.list += 445.gobmk
-spec06.list += 456.hmmer
-spec06.list += 458.sjeng
-spec06.list += 462.libquantum
-spec06.list += 464.h264ref
-spec06.list += 471.omnetpp
-spec06.list += 473.astar
-spec06.list += 483.xalancbmk
+# spec06.list += 403.gcc
+# spec06.list += 429.mcf
+# spec06.list += 445.gobmk
+# spec06.list += 456.hmmer
+# spec06.list += 458.sjeng
+# spec06.list += 462.libquantum
+# spec06.list += 464.h264ref
+# spec06.list += 471.omnetpp
+# spec06.list += 473.astar
+# spec06.list += 483.xalancbmk
 
 # ramfs
 BASE_RAMFS_OUTDIR = $(PWD)/output_files/base_dir
@@ -84,7 +84,7 @@ SIMPOINT=$(PWD)/projects/SimPoint.3.2/bin/simpoint
 SIMPOINT_OUTDIR = $(PWD)/output_files/simpoint
 # for simpoint run
 SM_INTERVAL=100000000
-SIMPOINT_FLAGS = -maxK 30 -numInitSeeds 5
+SIMPOINT_FLAGS = -maxK 30 -numInitSeeds 5 -iters 1000
 
 ##############################################################
 
@@ -179,6 +179,9 @@ ckpt: $(patsubst %,%.ckpt,$(RAMFS_LIST))
 parallel_ckpt:
 	python3 ./scripts/batch_ckpt.py $(LA_EMU) $(LINUX_OUTDIR) $(LIBSIMPOINT) $(SIMPOINT_OUTDIR) $(SM_INTERVAL)
 
+ckpt_json:
+	python3 ./scripts/gen_ckpt_json.py --name simpoint.json --checkpoint $(SIMPOINT_OUTDIR) --sm-interval $(SM_INTERVAL)
+
 # all_ckpt:
 # 	make bblk
 # 	make bbv
@@ -201,5 +204,6 @@ help:
 	@echo "step 2: make linux 				# generate vmlinux use ramfs"
 	@echo "step 3: make [parallel_]bblk			# generate basic block info use la_emu and vmlinux"
 	@echo "step 4: make [parallel_]bbv			# generate basic block vector info use la_emu, vmlinux and bblk"
+	@echo "step 4: make [parallel_]bbv_naive	# generate naive basic block vector info use la_emu and vmlinux"
 	@echo "step 5: make [parallel_]simpoint		# generate simpoints and weights use simpoint"
 	@echo "step 6: make [parallel_]ckpt			# generate simpoint checkpoint use la_emu, vmlinux, weights and simpoints"
