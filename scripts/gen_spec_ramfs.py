@@ -60,7 +60,8 @@ for line in speccmds:
         invoke(f"rm -rf  {ramfs_dir}")
         invoke(f"cp -r {base_ramfs_dir} {ramfs_dir}")
         invoke(f"mkdir {ramfs_dir}/dev")
-        invoke(f"sudo mknod -m 600 {ramfs_dir}/dev/console c 5 1")
+        invoke(f"touch {ramfs_dir}/dev/console")
+        # invoke(f"sudo mknod -m 600 {ramfs_dir}/dev/console c 5 1")
         with open(ramfs_dir + '/init.cmd', 'w') as f:
             if '-i' in options:
                 print("i %s" % (options['-i']), file=f)

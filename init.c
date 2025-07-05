@@ -13,6 +13,7 @@
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/reboot.h>
+#include <sys/sysmacros.h>
 
 char filename_stdin[1024];
 char filename_stdout[1024];
@@ -237,9 +238,47 @@ int test_main(int argc, char *argv[])
     return 0;
 }
 
+void fix_dev_console() {
+    struct stat st;
+    if (stat("/dev/console", &st) != 0) {
+        perror("[INIT] stat /dev/console failed");
+        return;
+    }
+
+    if (!S_ISCHR(st.st_mode) || major(st.st_rdev) != 5 || minor(st.st_rdev) != 1) {
+        // printf("[INIT] Replacing fake /dev/console...\n");
+        if (unlink("/dev/console") != 0) {
+            perror("[INIT] unlink /dev/console failed");
+            return;
+        }
+        if (mknod("/dev/console", S_IFCHR | 0600, makedev(5, 1)) != 0) {
+            perror("[INIT] mknod /dev/console failed");
+            return;
+        }
+        // printf("[INIT] Created real /dev/console\n");
+    } else {
+        // printf("[INIT] /dev/console is already correct\n");
+    }
+
+    int fd = open("/dev/console", O_RDWR);
+    if (fd < 0) {
+        perror("[INIT] open /dev/console failed");
+        return;
+    }
+
+    dup2(fd, STDIN_FILENO);
+    dup2(fd, STDOUT_FILENO);
+    dup2(fd, STDERR_FILENO);
+
+    if (fd > 2) close(fd);
+    // printf("[INIT] /dev/console reattached to stdin/stdout/stderr\n");
+}
+
 int main(int argc, char *argv[])
 {
     int res;
+
+    fix_dev_console();
 
     stderr = fdopen(dup(STDERR_FILENO), "w");
     res = test_main(argc, argv);

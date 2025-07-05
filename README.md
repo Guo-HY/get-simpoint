@@ -24,7 +24,7 @@
 - `SIMPOINT` 指向 simpoint 二进制路径，需要提前进入 `projects/SimPoint3.2` 执行 make 生成这个二进制。`SM_INTERVAL` 为 simpoint 采样间隔，`SIMPOINT_FLAGS` 为其它 simpoint 设置，按需修改。
 
 ### Step4：运行
-下面是生成 simpoint 采样点的具体步骤，注意这些步骤应该都需要 sudo 权限，因为在 `gen_spec_ramfs.py` 脚本中需要用 sudo 权限生成一个 `/dev/console` 文件：
+下面是生成 simpoint 采样点的具体步骤：
 - 1. 用 make parallel_ramfs 命令批量生成包含所有 `BENCH_LIST` 指定的 spec 二进制的根文件系统，存放在 output_files/ramfs 路径下。
 - 2. 用 make parallel_linux 命令，对每个根文件系统生成一个包含它的 vmlinux，存放在 output_files/linux 路径下。
 - 3. 用 make parallel_bbv_naive 命令，调用 LA_EMU 执行每一个 vmlinux，生成 bbv 向量，存放在 output_files/simpoint 路径下。
