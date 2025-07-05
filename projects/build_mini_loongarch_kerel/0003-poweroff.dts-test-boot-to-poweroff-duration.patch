@@ -1,0 +1,82 @@
+From de60e41b6c37bcb5b3f718637a574338997dfdc0 Mon Sep 17 00:00:00 2001
+From: Xinyu Li <lixinyu20s@ict.ac.cn>
+Date: Wed, 19 Jun 2024 09:44:33 +0800
+Subject: [PATCH 3/4] poweroff.dts test boot to poweroff duration
+
+Signed-off-by: Xinyu Li <lixinyu20s@ict.ac.cn>
+---
+ arch/loongarch/boot/dts/poweroff.dts | 62 ++++++++++++++++++++++++++++
+ 1 file changed, 62 insertions(+)
+ create mode 100644 arch/loongarch/boot/dts/poweroff.dts
+
+diff --git a/arch/loongarch/boot/dts/poweroff.dts b/arch/loongarch/boot/dts/poweroff.dts
+new file mode 100644
+index 000000000000..568f9d5ea478
+--- /dev/null
++++ b/arch/loongarch/boot/dts/poweroff.dts
+@@ -0,0 +1,62 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Copyright (C) 2023 Loongson Technology Corporation Limited
++ */
++
++/dts-v1/;
++
++#include <dt-bindings/interrupt-controller/irq.h>
++
++/ {
++    model = "loongson,generic";
++    compatible = "loongson,loongson3";
++
++	#address-cells = <2>;
++	#size-cells = <2>;
++
++	chosen {
++        bootargs = "i8042.nokbd swiotlb=64 dhash_entries=16384 ihash_entries=16384 nokaslr norandmaps console=ttyS0,115200 root=/dev/ram earlycon=uart,0x1fe001e0,115200 rdinit=/sbin/poweroff -- -f";
++	};
++
++	memory {
++		device_type = "memory";
++		reg = <0x0 0x00000000 0x0 0x10000000>,
++		      <0x0 0x90000000 0x0 0xf0000000>;
++	};
++
++	cpus {
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		cpu0: cpu@1 {
++			compatible = "loongson,la464";
++			device_type = "cpu";
++			reg = <0x0>;
++			clocks = <&cpu_clk>;
++		};
++	};
++
++	cpu_clk: cpu-clk {
++		compatible = "fixed-clock";
++		#clock-cells = <0>;
++		clock-frequency = <2500000000>;
++	};
++
++	cpuintc: interrupt-controller {
++		compatible = "loongson,cpu-interrupt-controller";
++		#interrupt-cells = <1>;
++		interrupt-controller;
++	};
++
++	uart0: serial@1fe001e0 {
++		device_type = "serial";
++		compatible = "ns16550a";
++		reg = <0x0 0x1fe001e0 0x0 0x10>;
++		clock-frequency = <100000000>;
++//		interrupt-parent = <&cpuintc>;
++//		interrupts = <7 IRQ_TYPE_LEVEL_HIGH>;
++		no-loopback-test;
++	};
++
++};
++
+-- 
+2.34.1
+

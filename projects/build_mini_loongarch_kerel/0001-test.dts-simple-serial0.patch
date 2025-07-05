@@ -1,0 +1,104 @@
+From 8060b65d41d33d9555b83ba432870147ed5f493e Mon Sep 17 00:00:00 2001
+From: Xinyu Li <lixinyu20s@ict.ac.cn>
+Date: Sat, 20 Apr 2024 15:54:15 +0800
+Subject: [PATCH 1/4] test.dts simple serial0 add poweroff add test.dts ram up
+ 16GB
+
+---
+ arch/loongarch/boot/dts/test.dts | 84 ++++++++++++++++++++++++++++++++
+ 1 file changed, 84 insertions(+)
+ create mode 100644 arch/loongarch/boot/dts/test.dts
+
+diff --git a/arch/loongarch/boot/dts/test.dts b/arch/loongarch/boot/dts/test.dts
+new file mode 100644
+index 000000000000..bacb65ec6e1e
+--- /dev/null
++++ b/arch/loongarch/boot/dts/test.dts
+@@ -0,0 +1,84 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Copyright (C) 2023 Loongson Technology Corporation Limited
++ */
++
++/dts-v1/;
++
++#include <dt-bindings/interrupt-controller/irq.h>
++
++/ {
++    model = "loongson,generic";
++    compatible = "loongson,loongson3";
++
++	#address-cells = <2>;
++	#size-cells = <2>;
++
++	chosen {
++        bootargs = "i8042.nokbd nokaslr norandmaps console=ttyS0,115200 root=/dev/ram rdinit=/init earlycon=uart,0x1fe001e0,115200";
++	};
++
++	memory {
++		device_type = "memory";
++		reg = <0x0 0x00000000 0x0 0x10000000>,
++		      <0x0 0x90000000 0x3 0xf0000000>;
++	};
++
++	cpus {
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		cpu0: cpu@1 {
++			compatible = "loongson,la464";
++			device_type = "cpu";
++			reg = <0x0>;
++			clocks = <&cpu_clk>;
++		};
++	};
++
++	cpu_clk: cpu-clk {
++		compatible = "fixed-clock";
++		#clock-cells = <0>;
++		clock-frequency = <2500000000>;
++	};
++
++	cpuintc: interrupt-controller {
++		compatible = "loongson,cpu-interrupt-controller";
++		#interrupt-cells = <1>;
++		interrupt-controller;
++	};
++
++	uart0: serial@1fe001e0 {
++		device_type = "serial";
++		compatible = "ns16550a";
++		reg = <0x0 0x1fe001e0 0x0 0x10>;
++		clock-frequency = <100000000>;
++		// interrupt-parent = <&cpuintc>;
++		// interrupts = <7 IRQ_TYPE_LEVEL_HIGH>;
++		no-loopback-test;
++	};
++
++		pmc: power-management@100d0000 {
++			compatible = "loongson,ls2k0500-pmc", "syscon";
++			reg = <0x0 0x100d0000 0x0 0x58>;
++			interrupt-parent = <&cpuintc>;
++			interrupts = <6>;
++			loongson,suspend-address = <0x0 0x1c000500>;
++
++			syscon-reboot {
++				compatible = "syscon-reboot";
++				offset = <0x30>;
++				mask = <0x1>;
++			};
++
++			syscon-poweroff {
++				compatible = "syscon-poweroff";
++				regmap = <&pmc>;
++				offset = <0x14>;
++				mask = <0x3c00>;
++				value = <0x3c00>;
++			};
++		};
++
++};
++
+-- 
+2.34.1
+

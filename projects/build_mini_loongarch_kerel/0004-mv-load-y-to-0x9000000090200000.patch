@@ -1,0 +1,26 @@
+From 9a14a244d88a4621ab15724de3a8b5a5f85c71d7 Mon Sep 17 00:00:00 2001
+From: Xinyu Li <lixinyu20s@ict.ac.cn>
+Date: Wed, 5 Jun 2024 18:47:00 +0800
+Subject: [PATCH 4/4] mv load-y to 0x9000000090200000
+
+Signed-off-by: Xinyu Li <lixinyu20s@ict.ac.cn>
+---
+ arch/loongarch/Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/loongarch/Makefile b/arch/loongarch/Makefile
+index ae3f80622f4c..3fc4cb29a10a 100644
+--- a/arch/loongarch/Makefile
++++ b/arch/loongarch/Makefile
+@@ -120,7 +120,7 @@ ifndef CONFIG_KASAN
+ cflags-y += -fno-builtin-memcpy -fno-builtin-memmove -fno-builtin-memset
+ endif
+ 
+-load-y		= 0x9000000000200000
++load-y		= 0x9000000090200000
+ bootvars-y	= VMLINUX_LOAD_ADDRESS=$(load-y)
+ 
+ drivers-$(CONFIG_PCI)		+= arch/loongarch/pci/
+-- 
+2.34.1
+

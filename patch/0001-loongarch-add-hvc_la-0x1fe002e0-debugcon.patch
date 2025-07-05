@@ -1,0 +1,139 @@
+From 04757bb42d58af746694762c67aef55dcbaa98f0 Mon Sep 17 00:00:00 2001
+From: ghy <2247883756@qq.com>
+Date: Thu, 3 Apr 2025 16:24:37 +0800
+Subject: [PATCH] loongarch: add hvc_la (0x1fe002e0 debugcon)
+
+---
+ drivers/tty/hvc/Makefile      |  1 +
+ drivers/tty/hvc/hvc_console.c |  2 ++
+ drivers/tty/hvc/hvc_la.c      | 63 +++++++++++++++++++++++++++++++++++
+ include/linux/xxyydebugcon.h  | 25 ++++++++++++++
+ 4 files changed, 91 insertions(+)
+ create mode 100644 drivers/tty/hvc/hvc_la.c
+ create mode 100644 include/linux/xxyydebugcon.h
+
+diff --git a/drivers/tty/hvc/Makefile b/drivers/tty/hvc/Makefile
+index 98880e357941..6b741697dfc4 100644
+--- a/drivers/tty/hvc/Makefile
++++ b/drivers/tty/hvc/Makefile
+@@ -11,3 +11,4 @@ obj-$(CONFIG_HVC_IUCV)		+= hvc_iucv.o
+ obj-$(CONFIG_HVC_UDBG)		+= hvc_udbg.o
+ obj-$(CONFIG_HVC_RISCV_SBI)	+= hvc_riscv_sbi.o
+ obj-$(CONFIG_HVCS)		+= hvcs.o
++obj-y                           += hvc_la.o
+diff --git a/drivers/tty/hvc/hvc_console.c b/drivers/tty/hvc/hvc_console.c
+index cd1f657f782d..dfd876352fda 100644
+--- a/drivers/tty/hvc/hvc_console.c
++++ b/drivers/tty/hvc/hvc_console.c
+@@ -1031,6 +1031,8 @@ static int hvc_init(void)
+ 	drv->minor_start = HVC_MINOR;
+ 	drv->type = TTY_DRIVER_TYPE_SYSTEM;
+ 	drv->init_termios = tty_std_termios;
++	drv->init_termios.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
++	drv->init_termios.c_oflag &= ~OPOST;
+ 	tty_set_operations(drv, &hvc_ops);
+ 
+ 	/* Always start the kthread because there can be hotplug vty adapters
+diff --git a/drivers/tty/hvc/hvc_la.c b/drivers/tty/hvc/hvc_la.c
+new file mode 100644
+index 000000000000..065adac25763
+--- /dev/null
++++ b/drivers/tty/hvc/hvc_la.c
+@@ -0,0 +1,63 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Copyright (C) 2008 David Gibson, IBM Corporation
++ * Copyright (C) 2012 Regents of the University of California
++ * Copyright (C) 2017 SiFive
++ */
++
++#include <linux/console.h>
++#include <linux/err.h>
++#include <linux/init.h>
++#include <linux/moduleparam.h>
++#include <linux/types.h>
++
++
++#include "hvc_console.h"
++
++#include <linux/xxyydebugcon.h>
++
++static ssize_t hvc_sbi_tty_put(uint32_t vtermno, const u8 *buf, size_t count)
++{
++	xxyy_debugcon_out_str_n(buf, count);
++	return count;
++	// int i;
++
++	// for (i = 0; i < count; i++) {
++	// 	sbi_console_putchar(buf[i]);
++	// }
++
++	// return i;
++}
++
++static ssize_t hvc_sbi_tty_get(uint32_t vtermno, u8 *buf, size_t count)
++{
++	size_t i, c;
++
++	for (i = 0; i < count; i++) {
++		// c = sbi_console_getchar();
++		if (c < 0)
++			break;
++		buf[i] = c;
++	}
++
++	return i;
++}
++
++static const struct hv_ops hvc_sbi_ops = {
++	.get_chars = hvc_sbi_tty_get,
++	.put_chars = hvc_sbi_tty_put,
++};
++
++static int __init hvc_la_init(void)
++{
++	return PTR_ERR_OR_ZERO(hvc_alloc(0, 0, &hvc_sbi_ops, 16));
++}
++device_initcall(hvc_la_init);
++
++static int __init hvc_la_console_init(void)
++{
++	hvc_instantiate(0, 0, &hvc_sbi_ops);
++
++	return 0;
++}
++console_initcall(hvc_la_console_init);
+diff --git a/include/linux/xxyydebugcon.h b/include/linux/xxyydebugcon.h
+new file mode 100644
+index 000000000000..7f56eed256e2
+--- /dev/null
++++ b/include/linux/xxyydebugcon.h
+@@ -0,0 +1,25 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef _LINUX_XXYYDEBUGCON_H
++#define _LINUX_XXYYDEBUGCON_H
++
++static inline void xxyy_debugcon_out_char(char c) {
++	*(volatile char*)(0x800000001fe002e0ull) = c;
++}
++
++static inline void xxyy_debugcon_out_str(const char * str) {
++	while (*str) {
++		xxyy_debugcon_out_char(*str++);
++	}
++}
++
++static inline void xxyy_debugcon_out_str_n(const char* str, int n){
++	register int i = 0;
++	for (; i < n; i++) {
++		xxyy_debugcon_out_char(str[i]);
++	}
++}
++
++#define XXYY_DUMP_CURRENT \
++	{xxyy_debugcon_out_str("xxyy:" __FILE__ ":" __stringify(__LINE__) ":");xxyy_debugcon_out_str((char*)__func__);xxyy_debugcon_out_str("\n");}
++
++#endif /* _LINUX_XXYYDEBUGCON_H */
+-- 
+2.34.1
+

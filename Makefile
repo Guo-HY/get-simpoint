@@ -1,22 +1,23 @@
 .DEFAULT_GOAL := help
 # config #####################################################
 
-COMPILER_HOME = /home/ghy/loongson/la64-toolchain/loongson-gnu-toolchain-8.3-x86_64-loongarch64-linux-gnu-rc1.4
+# 用来编译内核和ramfs的init.c的编译器
+COMPILER_HOME = /home/ghy/loongson/la64-toolchain/x86_64-cross-tools-loongarch64-binutils_2.44-gcc_15.1.0-glibc_2.41
 SPEC_HOME = /home/ghy/loongson/benchmark/spec2006/cpu2006v99
-LA_EMU_HOME=/home/ghy/loongson/LA_EMU
-LINUX_HOME=/home/ghy/loongson/linux/linux-4.19-loongson
+LA_EMU_HOME=/home/ghy/loongson/la_emu_internal
+LINUX_HOME=/home/ghy/loongson/linux/linux
 
 PWD = $(shell pwd)
 
 # compile tool chain
-TOOLCHAIN_ARCH = loongarch64-linux-gnu
+TOOLCHAIN_ARCH = loongarch64-unknown-linux-gnu
 CROSS_COMPILE = $(COMPILER_HOME)/bin/$(TOOLCHAIN_ARCH)-
 
 # spec06
 # path to benchspec/CPU2006
 spec06.bench_dir = $(SPEC_HOME)/benchspec/CPU2006
 # run name (directory in benchspec/CPU2006/*/run)
-spec06.run = run_base_ref_none.0000
+spec06.run = run_base_test_new_abi.0000
 
 # spec06 benchmarks
 spec06.list += 410.bwaves
@@ -73,10 +74,9 @@ LIBSIMPOINT=$(LA_EMU_HOME)/plugins/libsimpoint.so
 
 # linux
 LINUX_OUTDIR = $(PWD)/output_files/linux
-# for linux-4.19-loongson build
-export ARCH=loongarch
-LINUX_CFG=320ckpt_defconfig
+LINUX_CFG=tiny_defconfig
 LINUX_CFG_PATH=$(LINUX_HOME)/arch/loongarch/configs/$(LINUX_CFG)
+LINUX_BUILD_DIR=$(LINUX_HOME)/build_loongarch
 LINUX_LIST = $(patsubst %,%.vmlinux,$(RAMFS_LIST))
 
 # simpoint
@@ -118,16 +118,16 @@ ramfs_clean:
 linux: $(patsubst %,%.vmlinux,$(RAMFS_LIST))
 	
 %.vmlinux: %.vmlinux_build
-	cp $(LINUX_HOME)/vmlinux $(LINUX_OUTDIR)/$*.vmlinux
+	cp $(LINUX_BUILD_DIR)/vmlinux $(LINUX_OUTDIR)/$*.vmlinux
 
 %.vmlinux_config:
 	echo "Generated $*.vmlinux"
 	mkdir -p $(LINUX_OUTDIR)
 	sed -i 's,CONFIG_INITRAMFS_SOURCE=.*,CONFIG_INITRAMFS_SOURCE="$(RAMFS_OUTDIR)/$*.cpio.gz",g' $(LINUX_CFG_PATH)
-	make -C $(LINUX_HOME) $(LINUX_CFG)
+	make -C $(LINUX_HOME) ARCH=loongarch CROSS_COMPILE=$(CROSS_COMPILE) O=$(LINUX_BUILD_DIR) $(LINUX_CFG)
 
 %.vmlinux_build: %.vmlinux_config
-	make -C $(LINUX_HOME) vmlinux CROSS_COMPILE=$(CROSS_COMPILE) -j 4
+	make -C $(LINUX_HOME) ARCH=loongarch CROSS_COMPILE=$(CROSS_COMPILE) O=$(LINUX_BUILD_DIR) vmlinux -j 4
 
 linux_clean:
 	rm -rf $(LINUX_OUTDIR)
