@@ -1,5 +1,5 @@
 # get-simpoint 
-基于 la_emu 生成 spec cpu 的 Deterministic Checkpoint Simpoint。
+参考 `http://172.17.103.58/chenyuxiao/get-simpoint`, 基于 la_emu 生成 spec cpu 的 Deterministic Checkpoint Simpoint。
 
 ## 步骤
 ### Step1：编译 SPEC CPU
@@ -25,8 +25,8 @@
 
 ### Step4：运行
 下面是生成 simpoint 采样点的具体步骤：
-- 1. 用 make parallel_ramfs 命令批量生成包含所有 `BENCH_LIST` 指定的 spec 二进制的根文件系统，存放在 output_files/ramfs 路径下。
-- 2. 用 make parallel_linux 命令，对每个根文件系统生成一个包含它的 vmlinux，存放在 output_files/linux 路径下。
+- 1. 用 make ramfs 命令批量生成包含所有 `BENCH_LIST` 指定的 spec 二进制的根文件系统，存放在 output_files/ramfs 路径下。
+- 2. 用 make linux 命令，对每个根文件系统生成一个包含它的 vmlinux，存放在 output_files/linux 路径下。
 - 3. 用 make parallel_bbv_naive 命令，调用 LA_EMU 执行每一个 vmlinux，生成 bbv 向量，存放在 output_files/simpoint 路径下。
 - 4. 用 make parallel_simpoint 命令，对每个 bbv 向量进行聚类。
 - 5. 用 make parallel_ckpt 命令，生成 simpoint checkpoint，存放在 output_files/simpoint 路径下。
@@ -37,6 +37,5 @@
 ## 其它
 - 本项目认为用 `init.c` 编译出的 init 为linux 启动后运行的第一个进程，因此在 linux 的 dts 中需要指定 /init 为第一个执行的进程。
 - `init.c` 中使用 `ibar 64` 作为 la_emu 开始执行任务的起点（如记录 bbv，根据 bbv 生成 checkpoint 等任务），使用 `ibar 65` 结束 la_emu 运行。
-- 尚未对 spec2017 和 spec2000 进行适配，需要修改 Makefile 中的 spec 二进制搜寻路径，修改 `gen_spec_ramfs.py`。
 ### Warm-Up
 处理器中的 Cache、MMU、分支预测器的冷启动会影响性能评估的准确性，因此需要进行 Warm-Up，对 Cache、MMU、分支预测器进行数据预热。 具体实现方式为提前多执行 W (Warmup length) 条指令，例如：一个预期的 Checkpoint，时间节点为 N，采样区间长度(SM_INTERVAL参数)为I，预热长度为 W。真正生成的 Checkpoint 节点为 N-W，处理器执行时，需要执行 (N-W，N+I) ， 即 W+I 条指令。收集性能数据时需要舍去 (N-M, N) 部分，只收集 （N，N+I）部分的性能数据。 需要注意的是，我们默认设置了W=I（在LIBSIMPOINT 中）。如果需要改变，需要改源码额外调整。
