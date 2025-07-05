@@ -14,8 +14,10 @@
 - 其它内核配置可以参考 `projects/build_mini_loongarch_kernel` 中 lxy 师兄的 patch。
 
 ### Step3：修改 Makefile
-- 设置 `COMPILER_HOME` 为 LoongArch 编译器路径，`SPEC_HOME` 为 speccpu2006 的根目录，`LA_EMU_HOME` 为 la_emu 的根目录，`LINUX_HOME` 为 linux 根目录。
-- 设置 `spec06.run` 为 `benchspec/CPU2006/*/run` 下要跑的目录名字（如 `run_base_ref_none.0000`），设置`spec06.list` 为所有要跑的测试点。
+- 设置 `COMPILER_HOME` 为 LoongArch 编译器路径，`LA_EMU_HOME` 为 la_emu 的根目录，`LINUX_HOME` 为 linux 根目录。
+- 设置 SULTE 为 spec06 或 spec17r。
+    - 设置 `spec06.mk` 中 `SPEC_HOME` 为 speccpu2006 的根目录，`spec06.run` 为 `benchspec/CPU2006/*/run` 下要跑的目录名字（如 `run_base_ref_none.0000`），设置`spec06.list` 为所有要跑的测试点。
+    - `spec17r.mk` 中类似。
 - 如果 spec 二进制为静态链接，则设置 `LD_SO` 为空。如果 spec 二进制为动态链接，则需设置 `LD_SO` 为 spec 二进制运行时所需的动态链接器绝对路径，并将 Makefile 中 `$(BASE_RAMFS_OUTDIR)/.gen: $(INIT_SRCS)` 这个目标下的 `cp -a $(COMPILER_HOME)/sysroot/* $(BASE_RAMFS_OUTDIR)/` 这个注释打开，将编译器目录下的 LoongArch 架构动态库复制到 ramfs 中。需要注意编译器中动态库的具体路径在不同版本编译器中不同。
 - 后续的 `LA_EMU`，`LIB*` 这几个变量需要确认其指向的二进制都存在。
 - `LINUX_CFG` 和 `LINUX_CFG_PATH` 设置使用的 linux config 文件的名称和路径。注意我们默认 linux 的配置为编译 linux 时将 ramfs （以及DTS）打包在内核中，因此后续的 `%.vmlinux_config` 目标下会用 sed 命令修改 config 文件的 `CONFIG_INITRAMFS_SOURCE` 这个配置。
