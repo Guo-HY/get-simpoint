@@ -19,7 +19,7 @@ RAMFS_OUTDIR = $(PWD)/output_files/ramfs
 LD_SO = # /lib64/ld.so.1
 # ramfs options
 # spec06 or spec17r
-SUITE = spec06
+SUITE = spec17r
 RATE = 1
 
 include $(SUITE).mk
@@ -111,15 +111,15 @@ parallel_bblk:
 bbv: $(patsubst %,%.bbv,$(RAMFS_LIST))
 
 %.bbv:
-	echo "Generated bbv.txt,interval=$(SM_INTERVAL)"
-	$(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBBBV),bblk=$(SIMPOINT_OUTDIR)/$*/bblk.txt,bbv=$(SIMPOINT_OUTDIR)/$*/bbv.txt,interval=$(SM_INTERVAL),ibar0x40=1
+	echo "Generated bbv.gz,interval=$(SM_INTERVAL)"
+	$(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBBBV),bblk=$(SIMPOINT_OUTDIR)/$*/bblk.txt,bbv=$(SIMPOINT_OUTDIR)/$*/bbv.gz,gz=1,interval=$(SM_INTERVAL),ibar0x40=1
 
 bbv_naive: $(patsubst %,%.bbv_naive,$(RAMFS_LIST))
 
 %.bbv_naive:
 	mkdir -p $(SIMPOINT_OUTDIR)/$*
-	echo "Generated bbv.txt,interval=$(SM_INTERVAL)"
-	$(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBBBVNAIVE),bbv=$(SIMPOINT_OUTDIR)/$*/bbv.txt,interval=$(SM_INTERVAL),ibar0x40=1
+	echo "Generated bbv.gz,interval=$(SM_INTERVAL)"
+	$(LA_EMU) -m 16 -k $(LINUX_OUTDIR)/$*.vmlinux -z -p $(LIBBBVNAIVE),bbv=$(SIMPOINT_OUTDIR)/$*/bbv.gz,gz=1,interval=$(SM_INTERVAL),ibar0x40=1
 
 parallel_bbv_naive:
 	mkdir -p $(SIMPOINT_OUTDIR)
@@ -129,7 +129,7 @@ simpoint: $(patsubst %,%.simpoint,$(RAMFS_LIST))
 
 %.simpoint:
 	echo "Generated simpoints and weights"
-	$(SIMPOINT) $(SIMPOINT_FLAGS) -loadFVFile $(SIMPOINT_OUTDIR)/$*/bbv.txt -saveSimpoints $(SIMPOINT_OUTDIR)/$*/simpoints -saveSimpointWeights $(SIMPOINT_OUTDIR)/$*/weights
+	$(SIMPOINT) $(SIMPOINT_FLAGS) -loadFVFile $(SIMPOINT_OUTDIR)/$*/bbv.gz -inputVectorsGzipped -saveSimpoints $(SIMPOINT_OUTDIR)/$*/simpoints -saveSimpointWeights $(SIMPOINT_OUTDIR)/$*/weights
 
 parallel_simpoint:
 	python3 ./scripts/batch_simpoint.py $(SIMPOINT) $(LINUX_OUTDIR) $(SIMPOINT_OUTDIR) $(SIMPOINT_FLAGS)

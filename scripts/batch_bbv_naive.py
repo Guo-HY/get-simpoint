@@ -19,7 +19,7 @@ def get_bbv_naive(linux_path, bbv_path):
     try:
         os.makedirs(os.path.dirname(bbv_path), exist_ok=True)
         log_file = open(os.path.join(os.path.dirname(bbv_path), "bbv_naive.log"), "w")
-        cmd = [la_emu_path, "-m", "16", "-z", "-k", linux_path, "-p", f"{libbbvnaive},bbv={bbv_path},interval={sm_interval},ibar0x40=1"]
+        cmd = [la_emu_path, "-m", "16", "-z", "-k", linux_path, "-p", f"{libbbvnaive},bbv={bbv_path},gz=1,interval={sm_interval},ibar0x40=1"]
         print(f"cmd={cmd}")
         result = subprocess.run(cmd, stdout=log_file, stderr=log_file)
         end_time = time.time()
@@ -34,7 +34,7 @@ def get_bbv_naive(linux_path, bbv_path):
 def main():
     print("detect core num=" + str(num_cores))
     linux_paths = [os.path.join(linux_outdir, file) for file in os.listdir(linux_outdir)]
-    bbv_paths = [os.path.join(simpoint_outdir, file.rsplit('.', 1)[0], "bbv.txt") for file in os.listdir(linux_outdir)]
+    bbv_paths = [os.path.join(simpoint_outdir, file.rsplit('.', 1)[0], "bbv.gz") for file in os.listdir(linux_outdir)]
     
     with concurrent.futures.ProcessPoolExecutor(max_workers=num_cores) as executor:
         results = executor.map(get_bbv_naive, linux_paths, bbv_paths)

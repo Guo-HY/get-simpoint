@@ -16,10 +16,10 @@ def get_simpoint(simpoint_path):
     start_time = time.time()
     try:
         log_file = open(os.path.join(simpoint_path, "simpoint.log"), "w")
-        bbv_path = os.path.join(simpoint_path, "bbv.txt")
+        bbv_path = os.path.join(simpoint_path, "bbv.gz")
         simpoints_path = os.path.join(simpoint_path, "simpoints")
         weights_path = os.path.join(simpoint_path, "weights")
-        cmd = [simpoint] +  simpoint_params + ["-loadFVFile", bbv_path, "-saveSimpoints", simpoints_path,"-saveSimpointWeights", weights_path]
+        cmd = [simpoint] +  simpoint_params + ["-loadFVFile", bbv_path, "-inputVectorsGzipped", "-saveSimpoints", simpoints_path,"-saveSimpointWeights", weights_path]
         print(f"cmd={cmd}")
         result = subprocess.run(cmd, stdout=log_file, stderr=log_file)
         end_time = time.time()
