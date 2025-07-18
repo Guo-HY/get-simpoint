@@ -11,7 +11,7 @@
 - [内核源码](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git)
 - 目前部分实验平台在物理地址 0x1fe002e0 处有一个假串口，如果依赖该串口输出，则需应用 `patch/0001-loongarch-add-hvc_la-0x1fe002e0-debugcon.patch` 在linux 中添加该设备，然后将 dts 中 bootargs 中的 console 和 earlycon 都改为 hvc。
 - config 文件和 dts 文件，使用 `patch` 目录下的 `0001-loongarch-add-poweroff.dts-tiny_defconfig.patch`，按需修改。注意 poweroff.dts 的 bootargs 参数中使用的默认输出是 0x1fe002e0 的假串口。
-- 其它内核配置可以参考 `projects/build_mini_loongarch_kernel` 中 lxy 师兄的 patch。
+- 其它内核配置可以参考 `projects/build_mini_loongarch_kernel` 中 lxy 师兄的 patch，如果 ramfs 比较大（超过256M），需要应用 `projects/build_mini_loongarch_kerel/0004-mv-load-y-to-0x9000000090200000.patch`。
 
 ### Step3：修改 Makefile
 - 设置 `COMPILER_HOME` 为 LoongArch 编译器路径，`LA_EMU_HOME` 为 la_emu 的根目录，`LINUX_HOME` 为 linux 根目录。
